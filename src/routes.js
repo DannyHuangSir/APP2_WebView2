@@ -99,9 +99,6 @@ const R002001 = lazy(() => import('pages/R00200_Instalment/R00200_1'));
 const R002002 = lazy(() => import('pages/R00200_Instalment/R00200_2'));
 const R002003 = lazy(() => import('pages/R00200_Instalment/R00200_3'));
 
-// TODO：支援開發及Prototype測試使用
-const Login = lazy(() => import('proto/Login/login'));
-const Nav = lazy(() => import('proto/Nav/Nav'));
 // --------------------------------
 
 const routes = [
@@ -219,9 +216,6 @@ const routes = [
   {path: '/deduct2', exact: false, component: Deduct2},
   {path: '/deduct3', exact: false, component: Deduct3},
 
-  // TODO：支援開發及Prototype測試使用
-  {path: '/login', exact: false, component: Login},
-  {path: '/', exact: true, component: Nav},
   // --------------------------------
 ];
 
