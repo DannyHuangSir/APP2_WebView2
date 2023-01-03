@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable react/jsx-indent */
 /* eslint-disable react/jsx-wrap-multilines */
 import PropTypes from 'prop-types';
@@ -10,8 +11,9 @@ import { FEIBButton, FEIBIconButton } from 'components/elements';
 import SuccessFailureAnimations from 'components/SuccessFailureAnimations';
 import theme from 'themes/theme';
 import { ArrowBackIcon, HomeIcon } from 'assets/images/icons';
-import { goHome as goHomeFunc, closeFunc, switchLoading } from 'utilities/AppScriptProxy';
+import { switchLoading } from 'utilities/AppScriptProxy';
 import { showError } from 'utilities/MessageModal';
+import { useNavigation } from 'hooks/useNavigation';
 import {
   setModalVisible, setWaittingVisible, setDrawerVisible, setAnimationModalVisible,
   setDialogVisible,
@@ -41,7 +43,7 @@ function Layout({
   hasClearHeader,
 }) {
   const dispatch = useDispatch();
-
+  const { closeFunc, goHome: goHomeFunc } = useNavigation();
   //
   // 處理 Popup視窗、 等待中 及 Drawer。
   //
@@ -156,7 +158,7 @@ function Layout({
    */
   useEffect(async () => {
     // console.log('showWaitting -> ', waitting);
-    switchLoading(waitting);
+    // switchLoading(waitting); // 關掉的情況下還是會有loading畫面，不確定這一行用意為何
     if (waitting) {
       dispatch(setDrawerVisible(false));
       dispatch(setModalVisible(false));
@@ -273,13 +275,15 @@ function Layout({
   }
 
   return (
-  <div>
-    {isPassed === null ? (
+    <div>
+      {/* watting 在 true 的情況下, 會因為沒有傳入 inspector 時，isPassed 變成 true，導致無法進到 Loading */}
+      {/* 因此在這邊額外加入 waitting 進行判定 */}
+    {isPassed === null || isPassed === undefined || waitting ? (
       <Loading isFullscreen />
     ) : (
       <MessageModal />
     )}
-  </div>
+    </div>
   );
 }
 

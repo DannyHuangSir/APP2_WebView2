@@ -13,9 +13,10 @@ import { FEIBInputLabel, FEIBInput } from 'components/elements';
 /* Reducers & JS functions */
 import { setWaittingVisible } from 'stores/reducers/ModalReducer';
 import { customPopup, showPrompt } from 'utilities/MessageModal';
-import { loadFuncParams, startFunc, closeFunc } from 'utilities/AppScriptProxy';
+import { loadFuncParams } from 'utilities/AppScriptProxy';
 import { getAccountsList, updateAccount } from 'utilities/CacheData';
 import { FuncID } from 'utilities/FuncID';
+import { useNavigation } from 'hooks/useNavigation';
 import {
   getTransactions,
   downloadDepositBookCover,
@@ -28,13 +29,14 @@ import PageWrapper from './C00500.style';
  */
 const C00500 = () => {
   const dispatch = useDispatch();
+  const { startFunc, closeFunc } = useNavigation();
   const [, forceUpdate] = useReducer((x) => x + 1, 0);
 
   const { register, unregister, handleSubmit } = useForm();
 
   const [selectedAccountIdx, setSelectedAccountIdx] = useState();
+  const [accounts, setAccounts] = useState();
 
-  let accounts;
   const selectedAccount = accounts ? accounts[selectedAccountIdx ?? 0] : null;
 
   /**
@@ -49,7 +51,7 @@ const C00500 = () => {
       if (items.length === 0) {
         await showPrompt('您還沒有任何證券交割的存款帳戶，請在系統關閉此功能後，立即申請。', () => closeFunc());
       } else {
-        accounts = items;
+        setAccounts(items);
         await processStartParams(items);
         dispatch(setWaittingVisible(false));
       }

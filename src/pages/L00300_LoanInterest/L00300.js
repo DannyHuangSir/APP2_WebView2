@@ -10,9 +10,10 @@ import DebitCard from 'components/DebitCard/DebitCard';
 import InformationTape from 'components/InformationTape';
 import { FEIBTabContext, FEIBTabList, FEIBTab } from 'components/elements';
 import DownloadIcon from 'assets/images/icons/downloadIcon.svg';
-import { loadFuncParams, startFunc } from 'utilities/AppScriptProxy';
+import { loadFuncParams } from 'utilities/AppScriptProxy';
 import EmptyData from 'components/EmptyData';
 import { FuncID } from 'utilities/FuncID';
+import { useNavigation } from 'hooks/useNavigation';
 import { getSubPaymentHistory } from './api';
 
 /* Styles */
@@ -25,6 +26,7 @@ const LoanInterest = () => {
   const [cardData, setCardData] = useState({});
   const [dateRange, setDateRange] = useState('0');
   const [recordsList, setRecordsList] = useState([]);
+  const { startFunc } = useNavigation();
 
   const getStartDate = (type) => {
     let months;
@@ -44,16 +46,14 @@ const LoanInterest = () => {
   // 查詢繳款紀錄
   const getLoanInterestRecords = async (rangeType) => {
     const param = {
-      account: cardData.accountNo,
-      subNo: cardData.loanNo,
+      account: cardData.account,
+      subNo: cardData.subNo,
       startDate: dateToYMD(getStartDate(rangeType)),
       endDate: dateToYMD(),
     };
 
     const histroyResponse = await getSubPaymentHistory(param);
-    if (histroyResponse) {
-      setRecordsList(histroyResponse);
-    }
+    if (histroyResponse) setRecordsList(histroyResponse.data);
   };
 
   const handleChangeTabs = (e, value) => {
@@ -61,9 +61,7 @@ const LoanInterest = () => {
     getLoanInterestRecords(value);
   };
 
-  const toDetailPage = (singleHistoryData) => {
-    startFunc(`${FuncID.L00300}1`, { singleHistoryData, cardData });
-  };
+  const toDetailPage = (singleHistoryData) => startFunc(`${FuncID.L00300}1`, { singleHistoryData, cardData });
 
   const renderEditList = () => (
     <ul className="noticeEditList downloadItemList">
@@ -92,17 +90,12 @@ const LoanInterest = () => {
 
   useEffect(async () => {
     const startParams = await loadFuncParams();
-
-    if (startParams) {
-      setCardData(startParams.card);
-    }
+    if (startParams) setCardData(startParams.loan);
   }, []);
 
   // 進到該頁面時先 Query 近六個月的繳款紀錄
   useEffect(() => {
-    if (cardData?.accountNo) {
-      getLoanInterestRecords(dateRange);
-    }
+    if (cardData?.account) getLoanInterestRecords(dateRange);
   }, [cardData]);
 
   return (
@@ -111,9 +104,9 @@ const LoanInterest = () => {
         <div className="cardArea">
           <DebitCard
             branch=""
-            cardName={cardData?.alias || '信貸'}
-            account={`${cardData?.accountNo || ''} ${
-              cardData.loanNo
+            cardName={cardData?.loanType || '信貸'}
+            account={`${cardData?.account || ''} ${
+              cardData.subNo
             }`}
             balance={toCurrency(cardData?.balance || '')}
             dollarSign={cardData?.currency || ''}
@@ -156,7 +149,9 @@ const LoanInterest = () => {
               ))}
             </div>
           ) : (
-            <EmptyData content="查無最近三年內的帳務往來資料" />
+            <div className="emptydata-wrapper">
+              <EmptyData content="查無最近三年內的帳務往來資料" />
+            </div>
           )}
         </div>
       </LoanInterestWrapper>

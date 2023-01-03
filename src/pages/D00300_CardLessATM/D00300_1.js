@@ -9,11 +9,12 @@ import Layout from 'components/Layout/Layout';
 import { FEIBButton} from 'components/elements';
 import DebitCard from 'components/DebitCard/DebitCard';
 import Accordion from 'components/Accordion';
-import { closeFunc, transactionAuth } from 'utilities/AppScriptProxy';
+import { transactionAuth } from 'utilities/AppScriptProxy';
 import { showCustomPrompt, showError } from 'utilities/MessageModal';
-import { getAccountsList } from 'utilities/CacheData';
+import { getAccountBonus, getAccountsList } from 'utilities/CacheData';
 import { AuthCode } from 'utilities/TxnAuthCode';
-import { cardLessWithdrawApply, getAccountExtraInfo } from './api';
+import { useNavigation } from 'hooks/useNavigation';
+import { cardLessWithdrawApply } from './api';
 
 import CardLessATMWrapper from './D00300.style';
 import { CustomInputSelectorField } from './fields/CustomInputSelectorField';
@@ -23,14 +24,14 @@ const CardLessATM1 = () => {
   const defaultValues = {
     withdrawAmount: 0,
   };
-
-  const {handleSubmit, control } = useForm({
+  const {handleSubmit, control, reset } = useForm({
     defaultValues,
     resolver: yupResolver(validationSchema),
   });
 
   const history = useHistory();
   const dispatch = useDispatch();
+  const { closeFunc } = useNavigation();
 
   const [accountSummary, setAccountSummary] = useState({
     account: '',
@@ -41,6 +42,7 @@ const CardLessATM1 = () => {
 
   // 無卡提款交易
   const requestCardlessWithdrawApply = async (param) => {
+    dispatch(setWaittingVisible(true));
     const {result} = await transactionAuth(AuthCode.D00300);
     if (result) {
       const {
@@ -55,7 +57,7 @@ const CardLessATM1 = () => {
         withdrawAmount,
         account,
       };
-
+      dispatch(setWaittingVisible(false));
       if (seqNo) history.push('/D003002', { data });
       else showCustomPrompt({ message, onOk: closeFunc, onClose: closeFunc });
     }
@@ -83,7 +85,7 @@ const CardLessATM1 = () => {
       });
 
       // 跨轉優惠資訊取回後再更新。
-      getAccountExtraInfo(acct.accountNo).then((extraInfo) => {
+      getAccountBonus(acct.accountNo, (extraInfo) => {
         setAccountSummary({
           account: acct.accountNo,
           balance: acct.balance,
@@ -92,6 +94,7 @@ const CardLessATM1 = () => {
         });
       });
 
+      reset((formValues) => ({...formValues, account: acct.accountNo}));
       dispatch(setWaittingVisible(false));
     });
   }, []);

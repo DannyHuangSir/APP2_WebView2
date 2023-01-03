@@ -212,7 +212,7 @@ const E00100 = () => {
 
   // 取得帳戶餘額
   const getAmount = (currency) => accountsList.find((item) => (
-    item.account === watch((currency === 'TWD') ? 'outAccount' : 'inAccount')
+    item.account === watch((currency === 'NTD') ? 'outAccount' : 'inAccount')
   ))?.details.find((item) => (item.currency === selectedCurrency.ccyCd))?.balance || '0';
 
   // TODO: 移除
@@ -234,7 +234,7 @@ const E00100 = () => {
     const exchangeType = watch('exchangeType') === '1' ? 'n2f' : 'f2n';
     // 判斷幣別
     const isNTD = watch('outType') === '2';
-    const ntAmt = getAmount('TWD');
+    const ntAmt = getAmount('NTD');
     const frgnAmt = Number(getAmount(selectedCurrency.ccyCd).replace(/,/gi, ''));
     // 如果是台轉外，檢查是否超過台幣餘額
     if (exchangeType === 'n2f') {
@@ -300,7 +300,7 @@ const E00100 = () => {
         leglDesc: propertiesList.find((item) => item.leglCode === property).leglDesc,
         outAccountAmount:
           exchangeType === '1'
-            ? getAmount('TWD')
+            ? getAmount('NTD')
             : Number(getAmount(selectedCurrency.ccyCd).replace(/,/gi, '')),
       };
       history.push('/E001001', { ...confirmData });
@@ -312,7 +312,7 @@ const E00100 = () => {
   };
 
   const generateAvailibleAmount = () => {
-    const ntAmt = getAmount('TWD');
+    const ntAmt = getAmount('NTD');
     const frgnAmt = Number(getAmount(selectedCurrency.ccyCd).replace(/,/gi, ''));
     if (watch('exchangeType') === '1') {
       return toCurrency(Math.round(ntAmt / selectedCurrency.sellRate) || 0);
@@ -346,7 +346,7 @@ const E00100 = () => {
    */
   const renderAccountOption = (showTwdAccount) => (
     accountsList
-      .filter((acct) => acct.details.find((item) => showTwdAccount && item.currency === 'TWD'))
+      .filter((acct) => acct.details.find((item) => showTwdAccount && item.currency === 'NTD'))
       .map((item) => (
         <FEIBOption key={item.account} value={item.account}>{item.account}</FEIBOption>
       ))
@@ -361,7 +361,7 @@ const E00100 = () => {
   const renderNTBlance = () => (
     <FEIBErrorMessage className="balance">
       可用餘額 NTD&nbsp;
-      {toCurrency(getAmount('TWD') || 0)}
+      {toCurrency(getAmount('NTD') || 0)}
     </FEIBErrorMessage>
   );
 
@@ -517,7 +517,6 @@ const E00100 = () => {
                         <FEIBInput
                           {...balanceField}
                           type="number"
-                          inputMode="numeric"
                           id="foreignBalance"
                           name="foreignBalance"
                           placeholder={`請輸入${watch('exchangeType') === '2' ? '轉出' : '轉入'}金額`}
@@ -527,6 +526,7 @@ const E00100 = () => {
                           inputProps={{
                             maxLength: 9,
                             autoComplete: 'off',
+                            inputMode: 'numeric',
                           }}
                         />
                         <div className="balanceLayout">{foreignDollorStr}</div>
@@ -550,7 +550,6 @@ const E00100 = () => {
                           {...balanceField}
                           autoComplete="off"
                           type="number"
-                          inputMode="numeric"
                           id="ntDollorBalance"
                           name="ntDollorBalance"
                           placeholder={`請輸入${watch('exchangeType') === '2' ? '轉入' : '轉出'}金額`}
@@ -560,6 +559,7 @@ const E00100 = () => {
                           inputProps={{
                             maxLength: 9,
                             autoComplete: 'off',
+                            inputMode: 'numeric',
                           }}
                         />
                         <div className="balanceLayout">{ntDollorStr}</div>
@@ -595,6 +595,7 @@ const E00100 = () => {
                   id="memo"
                   name="memo"
                   placeholder="請輸入備註"
+                  inputProps={{maxLength: 20}}
                   error={!!errors.memo}
                 />
               )}

@@ -3,7 +3,7 @@ import { useHistory } from 'react-router';
 import Layout from 'components/Layout/Layout';
 import Accordion from 'components/Accordion';
 import { FEIBSwitch } from 'components/elements';
-import { startFunc, transactionAuth } from 'utilities/AppScriptProxy';
+import { transactionAuth } from 'utilities/AppScriptProxy';
 import { EditIcon } from 'assets/images/icons';
 
 import { useDispatch } from 'react-redux';
@@ -13,15 +13,18 @@ import { FuncID } from 'utilities/FuncID';
 import { showAnimationModal } from 'utilities/MessageModal';
 import { getAccountsList } from 'utilities/CacheData';
 import { useQLStatus } from 'hooks/useQLStatus';
+import { useNavigation } from 'hooks/useNavigation';
+import { accountFormatter } from 'utilities/Generator';
 import CardLessSettingWrapper from './T00400.style';
 
 import { getStatus, activate } from './api';
 
 const CardLessSetting = () => {
   const dispatch = useDispatch();
+  const { startFunc } = useNavigation();
   const history = useHistory();
 
-  const {QLResult, showMessage} = useQLStatus();// 確認裝置綁定狀態
+  const {QLResult, showUnbondedMsg} = useQLStatus();// 確認裝置綁定狀態
   const [cardLessStatus, setCardLessStatus] = useState();
   const [account, setAccount] = useState();
   const [isEnable, setEnable] = useState();
@@ -59,16 +62,15 @@ const CardLessSetting = () => {
             errorTitle: '設定失敗',
             errorDesc: '設定失敗',
           });
-
-          setCardLessStatus('2');
-          setEnable(true);
+          setCardLessStatus('3'); // 註銷成功後狀態代碼為 3-已註銷
+          setEnable(false);
         }
         dispatch(setWaittingVisible(false));
       }
-    } else showMessage();
+    } else showUnbondedMsg();
   };
 
-  const handlePwdChange = () => (QLResult ? startFunc(FuncID.D00400) : showMessage());
+  const handlePwdChange = () => (QLResult ? startFunc(FuncID.D00400) : showUnbondedMsg());
 
   return (
     <Layout title="無卡提款設定">
@@ -77,7 +79,7 @@ const CardLessSetting = () => {
           <div className="switchContainer">
             <div className="labelContainer">
               <p className="labelTxt">無卡提款</p>
-              {isEnable && <p className="phoneNum">{account?.accountNo}</p>}
+              {isEnable && <p className="phoneNum">{accountFormatter(account?.accountNo)}</p>}
             </div>
             <FEIBSwitch checked={isEnable} onClick={handleSwitchClick} />
           </div>

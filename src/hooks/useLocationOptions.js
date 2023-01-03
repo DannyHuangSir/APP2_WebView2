@@ -1,8 +1,26 @@
 import { useEffect, useState, useMemo } from 'react';
-import { getCountyList } from 'pages/T00700_BasicInformation/api';
+import { callAPI } from 'utilities/axios';
 
+// NOTE ========== 已棄用，暫時保留待刪除 ==========
 export const useLocationOptions = (watchedCountyName) => {
   const [locationLists, setLocationLists] = useState([]);
+
+  /**
+   * 縣市鄉鎮資料
+   * @returns {[{
+   *   countyName: String, // 縣市名稱
+   *   countyCode: String, // 縣市代碼
+   *   cities: [{
+   *     cityName: String, // 鄉鎮名稱
+   *     cityCode: String, // 鄉鎮代碼
+   *   }], // 鄉鎮市清單
+   * }]
+   * }
+   */
+  const getCountyList = async () => {
+    const response = await callAPI('/api/setting/queryCounty');
+    return response.data;
+  };
 
   // 縣市選單
   const countyOptions = useMemo(() => {
@@ -15,7 +33,7 @@ export const useLocationOptions = (watchedCountyName) => {
     return [];
   }, [locationLists]);
 
-  // 建立鄉鎮市區選單
+  // 鄉鎮市區選單
   const districtOptions = useMemo(() => {
     const foundDistrictOption = locationLists.find(
       ({ countyName }) => countyName === watchedCountyName,
@@ -30,12 +48,8 @@ export const useLocationOptions = (watchedCountyName) => {
   }, [watchedCountyName, locationLists]);
 
   useEffect(async () => {
-    // TODO 可能需要加入 dispatch(setWaittingVisible(true/false))
-
-    const { code, data } = await getCountyList({});
-    if (code === '0000') {
-      setLocationLists(data);
-    }
+    const countyListRes = await getCountyList();
+    if (countyListRes) setLocationLists(countyListRes);
   }, []);
 
   return {

@@ -13,9 +13,10 @@ import { FEIBInputLabel, FEIBInput } from 'components/elements';
 /* Reducers & JS functions */
 import { setWaittingVisible } from 'stores/reducers/ModalReducer';
 import { customPopup, showPrompt } from 'utilities/MessageModal';
-import { loadFuncParams, startFunc, closeFunc } from 'utilities/AppScriptProxy';
+import { loadFuncParams } from 'utilities/AppScriptProxy';
 import { getAccountsList, updateAccount } from 'utilities/CacheData';
 import { FuncID } from 'utilities/FuncID';
+import { useNavigation } from 'hooks/useNavigation';
 import {
   getTransactions,
   setAccountAlias,
@@ -28,6 +29,7 @@ import PageWrapper from './C00400.style';
  */
 const C00400 = () => {
   const dispatch = useDispatch();
+  const {startFunc, closeFunc} = useNavigation();
   const [, forceUpdate] = useReducer((x) => x + 1, 0);
 
   const { register, unregister, handleSubmit } = useForm();
@@ -61,13 +63,14 @@ const C00400 = () => {
    * @param {[*]} accts
    */
   const processStartParams = async (accts) => {
+    /* 所有外幣帳戶只有一個帳號，使用幣別區分index */
     // startParams: {
-    //   defaultAccount: 預設帳號
+    //   defaultCurrency: 預設幣別
     // }
     const startParams = await loadFuncParams();
     // 取得 Function Controller 提供的 keepData(model)
     if (startParams && (startParams instanceof Object)) {
-      const index = accts.findIndex((acc) => acc.accountNo === startParams.defaultAccount);
+      const index = accts.findIndex((acc) => acc.currency === startParams.defaultCurrency);
       setSelectedAccountIdx(index);
     } else {
       setSelectedAccountIdx(0);

@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import { useEffect, useState } from 'react';
 import { useHistory } from 'react-router';
 import { useForm } from 'react-hook-form';
@@ -13,10 +12,9 @@ import InformationTape from 'components/InformationTape';
 import { FEIBTabContext, FEIBTabPanel } from 'components/elements';
 import FailImage from 'assets/images/failIcon.png';
 import SuccessImage from 'assets/images/successIcon.png';
-import { currencySymbolGenerator, dateToString } from 'utilities/Generator';
+import { currencySymbolGenerator, dateToString, dateToYMD } from 'utilities/Generator';
 import { showCustomPrompt } from 'utilities/MessageModal';
 
-// import { closeFunc } from 'utilities/AppScriptProxy';
 import { getAccountsList } from 'utilities/CacheData';
 import SearchIcon from '@material-ui/icons/Search';
 
@@ -41,32 +39,32 @@ const D00800 = () => {
   const {control, handleSubmit, watch } = useForm({ defaultValues });
   const [curTab, curReserveRange, curResultRange] = watch([TAB, RESERVE_DATE_RANGE, RESULT_DATE_RANGE]);
   const currentValue = {
-    sdate: dateToString(curTab === '1' ? curReserveRange[0] : curResultRange[0]),
-    edate: dateToString(curTab === '1' ? curReserveRange[1] : curResultRange[1]),
+    sdate: dateToYMD(curTab === '1' ? curReserveRange[0] : curResultRange[0]),
+    edate: dateToYMD(curTab === '1' ? curReserveRange[1] : curResultRange[1]),
     searchObj: curTab === '1' ? searchList.reserve : searchList.result,
   };
 
   const onSearch = async ({ tab, reserveDateRange, resultDateRange }) => {
-    const sdate = dateToString(tab === '1' ? reserveDateRange[0] : resultDateRange[0]);
-    const edate = dateToString(tab === '1' ? reserveDateRange[1] : resultDateRange[1]);
+    const startDay = dateToYMD(tab === '1' ? reserveDateRange[0] : resultDateRange[0]);
+    const endDay = dateToYMD(tab === '1' ? reserveDateRange[1] : resultDateRange[1]);
     const { acctId, ccycd, accountType } = selectedAccount;
     const param = {
-      acctId,
+      accountNo: acctId,
       ccycd,
       accountType,
-      sdate,
-      edate,
-      queryType: 3, // QUESTION 目前 hardcode queryType = 3 ，意即只查詢網銀預約+臨櫃預約
+      startDay,
+      endDay,
+      queryType: 3, // ??? 目前 hardcode queryType = 3 ，意即只查詢網銀預約+臨櫃預約
     };
 
     const type = tab === '1' ? 'reserve' : 'result';
 
-    // 不同帳號的 reservedTransDetails 與 getResultTransDetails 回傳的資料結構不一樣.... 後續需請後端更正
+    // ??? 不同帳號的 reservedTransDetails 與 getResultTransDetails 回傳的資料結構不一樣.... 後續需請後端更正
     const { bookList } = tab === '1' ? await getReservedTransDetails(param) : await getResultTransDetails(param);
 
     setSearchList((prevSearchList) => ({
       ...prevSearchList,
-      [type]: { ...prevSearchList[type], [`${acctId}_${sdate}_${edate}`]: bookList },
+      [type]: { ...prevSearchList[type], [`${acctId}_${startDay}_${endDay}`]: bookList },
     }));
   };
 
@@ -143,7 +141,7 @@ const D00800 = () => {
       <InformationTape
         key={item.inActNo}
         topLeft={tabValue === '1' ? `${item.inBank}-${item.inActNo}` : `${item.inActNo}`}
-        topRight={currencySymbolGenerator('TWD', parseFloat(item.amount))}
+        topRight={currencySymbolGenerator('NTD', parseFloat(item.amount))}
         bottomLeft={tabValue === '1' ? `預約轉帳日：${dateToString(item.payDate)}` : `交易日期：${item.trnsDate}`}
         bottomRight={tabValue === '1' ? item.type : undefined}
         onClick={tabValue === '1' ? () => handleReserveDataDialogOpen(item) : () => handleOpenResultDialog(item)}

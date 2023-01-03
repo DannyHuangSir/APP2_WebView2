@@ -20,18 +20,18 @@ const ReserveTransferSearch1 = ({ location }) => {
   const goBack = () => history.goBack();
 
   const toResultPage = async () => {
+    dispatch(setWaittingVisible(true));
     const jsRs = await transactionAuth(AuthCode.D00800);
     if (jsRs.result) {
-      // switchLoading(true);
-      dispatch(setWaittingVisible(true));
       const {
         trnsDate, accountId, seqNo, source,
       } = location.state;
       const data = {
-        trnsDate, acctId: accountId, seqNo, queryType: source,
+        // BUG Request內容錯誤！
+        trnsDate, accountNo: accountId, seqNo, queryType: source,
       };
       const { code, message } = await cancelReserveTransfer(data);
-      // switchLoading(false);
+
       dispatch(setWaittingVisible(false));
       if (code === '0000') {
         history.push('/D008002', { ...location.state });
@@ -48,7 +48,7 @@ const ReserveTransferSearch1 = ({ location }) => {
         <section className="confrimDataContainer lighterBlueLine">
           <div className="dataLabel">轉出金額與轉入帳號</div>
           <div className="balance">
-            {currencySymbolGenerator('TWD', location.state?.amount)}
+            {currencySymbolGenerator('NTD', location.state?.amount)}
           </div>
           <div className="accountInfo">
             {location.state?.inBankName}
@@ -99,7 +99,7 @@ const ReserveTransferSearch1 = ({ location }) => {
             <InformationList
               title="帳戶餘額"
               content={`${currencySymbolGenerator(
-                'TWD',
+                'NTD',
                 location.state?.acctBalx,
               )}`}
               remark={location.state?.showName}
