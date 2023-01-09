@@ -385,9 +385,9 @@ async function getJwtToken(force) {
  * @param {Number} authCode 要求進行的驗證模式的代碼。
  * @param {String?} otpMobile 簡訊識別碼發送的手機門號。當綁定或變更門號時，因為需要確認手機號碼的正確性，所以要再驗OTP
  * @returns {Promise<{
- *  result: 驗證結果。
- *  message: 驗證失敗狀況描述。
- *  netbankPwd: 因為之後叫用交易相關 API 時可能會需要用到，所以傳回 E2EE 加密後的密碼。
+ *  result: '驗證結果。'
+ *  message: '驗證失敗狀況描述。'
+ *  netbankPwd: '因為之後叫用交易相關 API 時可能會需要用到，所以傳回 E2EE 加密後的密碼。'
  * }>}
  */
 async function transactionAuth(authCode, otpMobile) {
@@ -460,12 +460,10 @@ async function createQuickLogin(authType) {
   const appRs = await callAppJavaScript('regQLfeature', data, true, () => ({ result: true }));
   if (appRs.result === true) {
     const apiRs = await callAPI('/auth/quickLogin/v1/create', { authType });
-    if (!apiRs.isSuccess) {
-      return {
-        result: false,
-        message: apiRs.message,
-      };
-    }
+    return {
+      result: apiRs.isSuccess,
+      message: apiRs.message,
+    };
   }
   return appRs;
 }
@@ -488,12 +486,10 @@ async function verifyQuickLogin(authType, pwdE2ee) {
   const appRs = await callAppJavaScript('regQL', data, true, () => ({ result: true }));
   if (appRs.result === true) {
     const apiRs = await callAPI('/auth/quickLogin/v1/bind');
-    if (!apiRs.isSuccess) {
-      return {
-        result: false,
-        message: apiRs.message,
-      };
-    }
+    return {
+      result: apiRs.isSuccess,
+      message: apiRs.message,
+    };
   }
   return appRs;
 }
@@ -509,12 +505,10 @@ async function removeQuickLogin() {
   const appRs = await callAppJavaScript('delQL', null, true, () => ({ result: true }));
   if (appRs.result === true) {
     const apiRs = await callAPI('/auth/quickLogin/v1/unbind');
-    if (!apiRs.isSuccess) {
-      return {
-        result: false,
-        message: apiRs.message,
-      };
-    }
+    return {
+      result: apiRs.isSuccess,
+      message: apiRs.message,
+    };
   }
   return appRs;
 }
