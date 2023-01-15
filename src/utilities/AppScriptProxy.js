@@ -2,25 +2,27 @@
 /* eslint-disable no-use-before-define */
 import forge from 'node-forge';
 import { Buffer } from 'buffer';
+import store from 'stores/store';
+import { setAllCacheData } from 'stores/reducers/CacheReducer';
 import PasswordDrawer from 'components/PasswordDrawer';
 import { getTransactionAuthMode, createTransactionAuth, transactionAuthVerify } from 'components/PasswordDrawer/api';
 import { customPopup, showDrawer } from './MessageModal';
 // eslint-disable-next-line import/no-cycle
 import { callAPI } from './axios';
 
-const device = {
-  ios: () => window.webkit && /iPhone|iPad|iPod/i.test(navigator.userAgent),
-  android: () => window.jstoapp && /Android/i.test(navigator.userAgent),
-};
-
 /**
  * 取得目前運行的作業系統代碼。
- * @returns {Number} 1.iOS, 2.Android, 3.其他
+ * @param {Boolean} allowWebMode 表示傳回
+ * @returns {Number} 1.iOS, 2.Android, 3.Web, 4.其他
  */
-function getOsType() {
-  if (device.ios) return 1;
-  if (device.android) return 2;
-  return 3;
+function getOsType(allowWebMode) {
+  if (allowWebMode && !window.webkit & !window.jstoapp) return 3;
+
+  if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) return 1;
+  if (/Android/i.test(navigator.userAgent)) return 2;
+
+  // 未知的平台
+  return 4;
 }
 
 /**
@@ -32,6 +34,8 @@ function showLog(appJsName) {
     case 'onLoading':
     case 'setAuthdata':
     case 'getAPPAuthdata':
+    case 'getStorageData':
+    case 'setStorageData':
       return false;
 
     default: return true;
@@ -46,7 +50,8 @@ function showLog(appJsName) {
  * @param {*} webDevTest Web開發測試時的執行方法。(Option)
  * @returns
  */
-export async function callAppJavaScript(appJsName, jsParams, needCallback, webDevTest) {
+export // NOTE 為了提供 useNavigation 使用
+async function callAppJavaScript(appJsName, jsParams, needCallback, webDevTest) {
   const jsToken = `A${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`; // 有千萬分之一的機率重覆。
   if (showLog(appJsName)) console.log(`\x1b[33mAPP-JS://${appJsName}[${jsToken}] \x1b[37m - Params = `, jsParams);
 
@@ -93,16 +98,18 @@ export async function callAppJavaScript(appJsName, jsParams, needCallback, webDe
       callback: (needCallback ? `AppJavaScriptCallback['${jsToken}']` : null), // 此方法可提供所有WebView共用。
     };
 
-    if (device.ios()) {
-      const msg = JSON.stringify({ name: appJsName, data: JSON.stringify(request) });
-      window.webkit.messageHandlers.jstoapp.postMessage(msg);
-    } else if (device.android()) {
-      window.jstoapp[appJsName](JSON.stringify(request));
-    } else if (needCallback || webDevTest) {
-      window.AppJavaScriptCallback[jsToken](webDevTest ? webDevTest() : null);
-      return;
+    switch (getOsType(true)) {
+      case 1: // 1.iOS
+        window.webkit.messageHandlers.jstoapp.postMessage(JSON.stringify({ name: appJsName, data: JSON.stringify(request) }));
+        break;
+      case 2: // 2.Android
+        window.jstoapp[appJsName](JSON.stringify(request));
+        break;
+      default: // 3.其他
+        window.AppJavaScriptCallback[jsToken](webDevTest ? webDevTest() : null);
+        return;
+        // else throw new Error('使用 Web 版未支援的 APP JavaScript 模擬方法(' + appJsName + ')');
     }
-    // else throw new Error('使用 Web 版未支援的 APP JavaScript 模擬方法(' + appJsName + ')');
 
     // 若不需要從 APP 取得傳回值，就直接結束。
     if (!needCallback) resolve(null);
@@ -129,7 +136,7 @@ export const funcStack = {
    */
   getStack: () => {
     const stack = JSON.parse(localStorage.getItem('funcStack') ?? '[]');
-    if (stack.length === 0 && getOsType() !== 3) {
+    if (stack.length === 0 && getOsType(true) !== 3) {
       const currentFunc = sessionStorage.getItem('currentFunc');
       if (currentFunc) stack.push({ funcID: currentFunc });
     }
@@ -258,15 +265,13 @@ async function loadFuncParams() {
     }
 
     // 取得 Function 在 closeFunc 時提供的傳回值。
-    const response = sessionStorage.getItem('funcResp');
-    sessionStorage.removeItem('funcResp');
+    const response = await restoreData('funcResp', true);
     if (response) {
       console.log('>> 前一單元功能的 傳回值 : ', response);
       if (!params) params = {};
-      params.response = JSON.parse(response);
+      params.response = response;
     }
 
-    // await showAlert(`>> Function 啟動參數 : ${JSON.stringify(params)}`);
     console.log('>> Function 啟動參數 : ', params);
     return params;
   } catch (error) {
@@ -463,7 +468,7 @@ async function getQLStatus() {
     return {
       result: true,
       QLStatus: testData.mid ? '1' : '0',
-      QLType: '1', // TODO testData.qlMode,
+      QLType: `${(testData.qlMode ?? 0) + 1}`,
     };
   });
 }
@@ -548,6 +553,83 @@ async function changePattern() {
     result: true,
     message: '',
   }));
+}
+
+/**
+ * 還原 APP 在關閉 WebView 之前所保存的 CacheReducer 中的資料。
+ */
+async function restoreCache() {
+  if (!window.setCacheData) {
+    window.setCacheData = () => {
+      const data = store.getState()?.CacheReducer;
+      const cacheData = JSON.stringify(data);
+      return cacheData;
+    };
+
+    // Result = {result: true, strCachedata: "", message: ""}
+    const appCache = await callAppJavaScript('getCacheData', null, true);
+    if (appCache) {
+      try {
+        console.log('**** getCacheData : ', appCache);
+        const cacheData = JSON.parse(appCache.strCachedata);
+        console.log('**** getCacheData.strCachedata : ', cacheData);
+        store.dispatch(setAllCacheData(cacheData));
+        return cacheData;
+      } catch (ex) {
+        console.log('**** getCacheData Excption : ', ex);
+      }
+    }
+  }
+
+  const data = store.getState()?.CacheReducer;
+  return data;
+}
+
+/**
+ * 將資料存入 APP 資料字典。
+ * @param {String} key 要儲存資料的key值
+ * @param {Object} value 要儲存資料key值所對應的value值
+ * @returns {Promise<{
+ *   result: Boolean,
+ *   message: String,
+ * }>} {
+ *   result: 驗證結果(true/false)。
+ *   message: 驗證失敗狀況描述。
+ * }
+ */
+async function storeData(key, value) {
+  const valueStr = JSON.stringify(value ?? null);
+  return await callAppJavaScript('setStorageData', {key, value: valueStr}, true, () => {
+    sessionStorage.setItem(key, valueStr);
+    return {
+      result: true,
+      message: '',
+    };
+  });
+}
+
+/**
+ * 從 APP 資料字典取回資料，但資料項目不會清除。
+ * @param {String} key 要取出的資料key值
+ * @param {Boolean} remove 表示在取出後將此筆資料從 APP 資料字典中刪除
+ * @returns {Promise<{Object}>} 儲存在 APP 資料字典中的值。
+ */
+async function restoreData(key, remove) {
+  const data = await callAppJavaScript('getStorageData', {key, remove}, true, () => {
+    const value = sessionStorage.getItem(key);
+    if (remove) sessionStorage.removeItem(key);
+
+    return {
+      value,
+      result: true,
+      message: '',
+    };
+  });
+
+  if (data && data.result) {
+    return JSON.parse(data.value ?? 'null');
+  }
+  return null;
 }
 
 /**
@@ -646,7 +728,7 @@ async function queryPushBind() {
  */
 async function forceLogout(reasonCode, message, autoStart) {
   await callAppJavaScript('logout', { reason: reasonCode, message }, false, () => {
-    if (autoStart && !window.location.pathname.startsWith('/login')) {
+    if (!(autoStart && window.location.pathname.startsWith('/login'))) {
       const funcId = funcStack.peek() ? funcStack.peek().funcID : window.location.pathname.substring(1);
       const search = funcId ? `/${funcId}` : ''; // 登入後立即啟動的功能。
       window.location.href = `${process.env.REACT_APP_ROUTER_BASE}/login${search}`;
@@ -696,5 +778,8 @@ export {
   changePattern,
   queryPushBind,
   updatePushBind,
+  restoreCache,
+  storeData,
+  restoreData,
   forceLogout,
 };

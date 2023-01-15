@@ -1,36 +1,9 @@
-import {
-  setAllCacheData, setBanks, setBranches, setAccounts,
-} from 'stores/reducers/CacheReducer';
+import { setBanks, setBranches, setAccounts } from 'stores/reducers/CacheReducer';
 import store from 'stores/store';
 import { callAPI } from 'utilities/axios';
-import { callAppJavaScript } from './AppScriptProxy';
-
-const loadCacheData = async () => {
-  if (!window.setCacheData) {
-    window.setCacheData = () => {
-      const data = store.getState()?.CacheReducer;
-      const cacheData = JSON.stringify(data);
-      return cacheData;
-    };
-
-    // Result = {result: true, strCachedata: "", message: ""}
-    const appCache = await callAppJavaScript('getCacheData', null, true);
-    if (appCache) {
-      try {
-        console.log('**** getCacheData : ', appCache);
-        const cacheData = JSON.parse(appCache.strCachedata);
-        console.log('**** getCacheData.strCachedata : ', cacheData);
-        store.dispatch(setAllCacheData(cacheData));
-        return cacheData;
-      } catch (ex) {
-        console.log('**** getCacheData Excption : ', ex);
-      }
-    }
-  }
-
-  const data = store.getState()?.CacheReducer;
-  return data;
-};
+import BankData from 'assets/data/BankData.json';
+import BranchData from 'assets/data/BranchData.json';
+import { restoreCache } from './AppScriptProxy';
 
 /**
  * 查詢銀行代碼
@@ -40,10 +13,14 @@ const loadCacheData = async () => {
  * }]>} 銀行代碼清單。
  */
 export const getBankCode = async () => {
-  let {banks} = await loadCacheData();
+  let {banks} = await restoreCache();
   if (!banks) {
-    const response = await callAPI('/api/transfer/queryBank');
-    banks = response.data;
+    banks = BankData.banks;
+    // TODO 取得 BankData.version 之後的異動資料。
+    // const response = await callAPI('/api/transfer/queryBank');
+    // if (response.isSuccess) {
+    //   banks = response.data;
+    // }
     store.dispatch(setBanks(banks));
   }
   return banks;
@@ -58,10 +35,14 @@ export const getBankCode = async () => {
    }]>} 分行清單。
  */
 export const getBranchCode = async () => {
-  let {branches} = await loadCacheData();
+  let {branches} = await restoreCache();
   if (!branches) {
-    const response = await callAPI('/api/v1/getAllBranches');
-    branches = response.data;
+    branches = BranchData.branches;
+    // TODO 取得 BranchData.version 之後的異動資料。
+    // const response = await callAPI('/api/v1/getAllBranches');
+    // if (response.isSuccess) {
+    //   branches = response.data;
+    // }
     store.dispatch(setBranches(branches));
   }
   return branches;
@@ -95,10 +76,11 @@ const loadAccountsList = async () => {
   const Promise1 = callAPI('/api/deposit/v1/getAccounts', 'MSFC');
   const Promise2 = getBranchCode();
   return await Promise.allSettled([Promise1, Promise2]).then((result) => {
-    const accounts = result[0].value.data;
-    const branches = result[1].value;
+    if (!result[0].value.isSuccess) return null;
 
+    const accounts = result[0].value.data;
     return accounts.map((acct) => {
+      const branches = result[1].value;
       const branchId = acct.account.substring(0, 3);
       return {
         acctType: acct.acctType,
@@ -128,7 +110,7 @@ const loadAccountsList = async () => {
  * }]>} 帳號基本資料。
  */
 export const getAccountsList = async (acctTypes, onDataLoaded) => {
-  let {accounts} = await loadCacheData();
+  let {accounts} = await restoreCache();
   if (!accounts) {
     accounts = await loadAccountsList();
     store.dispatch(setAccounts(accounts)); // 保存所有的帳號資料。
@@ -137,7 +119,7 @@ export const getAccountsList = async (acctTypes, onDataLoaded) => {
   const result = accounts.filter((account) => acctTypes.indexOf(account.acctType) >= 0)
     // NOTE 外幣帳號的架構跟臺幣不一樣。
     // 要把一個帳戶、多個幣別 展開成 多個帳戶 的型式呈現。
-    .map((account) => (!account.details // 若是從 sessionStorage 取出的值，就沒有 details，所以直接傳回即可。
+    .map((account) => (!account.details // 若是從 APP-DD 取出的值，就沒有 details，所以直接傳回即可。
       ? account
       : account.details.map((detail) => {
         const acct = { ...account, ...detail};
@@ -165,7 +147,7 @@ export const getAccountsList = async (acctTypes, onDataLoaded) => {
  * }>} 優惠資訊
  */
 export const getAccountBonus = async (accountNo, onDataLoaded, foreUpdate) => {
-  let {accounts} = await loadCacheData();
+  let {accounts} = await restoreCache();
   if (!accounts) {
     accounts = await loadAccountsList();
     store.dispatch(setAccounts(accounts)); // 保存所有的帳號資料。
@@ -194,7 +176,7 @@ export const getAccountBonus = async (accountNo, onDataLoaded, foreUpdate) => {
  * @param {*} newAccount
  */
 export const updateAccount = async (newAccount) => {
-  let {accounts} = await loadCacheData();
+  let {accounts} = await restoreCache();
   if (!accounts) {
     accounts = await loadAccountsList();
     store.dispatch(setAccounts(accounts)); // 保存所有的帳號資料。

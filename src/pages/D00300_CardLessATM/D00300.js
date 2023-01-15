@@ -31,12 +31,14 @@ const CardLessATM = () => {
     } else {
     // 檢查無卡提款狀態; 0=未申請, 1=已申請未開通, 2=已開通, 3=已註銷, 4=已失效, 5=其他
       const cwdStatus = await getCardlessWdStatus();
-      if (cwdStatus === '2') history.push('/D003001');
+      if (cwdStatus === 2) history.push('/D003001');
       else {
         await showCustomPrompt({
           message: '愛方便的您, 怎能少了無卡提款服務, 快來啟用吧',
           onOk: () => startFunc(FuncID.T00400),
-          showCloseButton: true,
+          onCancel: closeFunc,
+          cancelContent: '下次再啟用',
+          showCloseButton: false,
         });
       }
     }
